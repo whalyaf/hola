@@ -1,1 +1,311 @@
-hola mundo
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Calculadora de Factura con IGV</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: Arial, sans-serif;
+      background: #f4f4f4;
+      color: #222;
+      padding: 2rem 1rem;
+    }
+
+    h1 {
+      text-align: center;
+      font-size: 1.4rem;
+      font-weight: 600;
+      margin-bottom: 1.5rem;
+      color: #1a1a1a;
+    }
+
+    .card {
+      max-width: 680px;
+      margin: 0 auto;
+      background: #fff;
+      border-radius: 10px;
+      border: 1px solid #ddd;
+      overflow: hidden;
+    }
+
+    /* ── Formulario de entrada ── */
+    .form-row {
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+      align-items: center;
+      padding: 1rem 1.25rem;
+      border-bottom: 1px solid #e5e5e5;
+      background: #fafafa;
+    }
+
+    .form-row input[type="text"] { flex: 2; min-width: 140px; }
+    .form-row input[type="number"] { flex: 1; min-width: 90px; }
+
+    input[type="text"],
+    input[type="number"] {
+      height: 36px;
+      padding: 0 10px;
+      border: 1px solid #ccc;
+      border-radius: 6px;
+      font-size: 14px;
+      color: #222;
+      outline: none;
+      transition: border-color 0.15s;
+    }
+    input:focus { border-color: #4a6cf7; }
+
+    button {
+      height: 36px;
+      padding: 0 16px;
+      background: #fff;
+      border: 1px solid #ccc;
+      border-radius: 6px;
+      font-size: 14px;
+      cursor: pointer;
+      transition: background 0.15s;
+      white-space: nowrap;
+    }
+    button:hover { background: #f0f0f0; }
+    button:active { transform: scale(0.98); }
+
+    .btn-add {
+      background: #4a6cf7;
+      color: #fff;
+      border-color: #4a6cf7;
+    }
+    .btn-add:hover { background: #3a5ce5; }
+
+    /* ── Tabla de ítems ── */
+    .empty-msg {
+      text-align: center;
+      padding: 2.5rem 1rem;
+      color: #999;
+      font-size: 14px;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 13px;
+    }
+
+    thead tr { background: #f7f7f7; }
+
+    th {
+      padding: 8px 12px;
+      text-align: right;
+      font-weight: 600;
+      color: #555;
+      border-bottom: 1px solid #e5e5e5;
+    }
+    th:first-child { text-align: left; padding-left: 1.25rem; }
+
+    td {
+      padding: 10px 12px;
+      text-align: right;
+      color: #333;
+      border-top: 1px solid #f0f0f0;
+    }
+    td:first-child { text-align: left; padding-left: 1.25rem; }
+
+    .btn-del {
+      background: none;
+      border: none;
+      color: #e05252;
+      font-size: 18px;
+      line-height: 1;
+      padding: 2px 6px;
+      cursor: pointer;
+    }
+    .btn-del:hover { color: #c03030; background: none; }
+
+    /* ── Totales ── */
+    .totals {
+      padding: 1rem 1.25rem;
+      border-top: 1px solid #e5e5e5;
+    }
+
+    .totals-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 5px 0;
+      font-size: 14px;
+      color: #555;
+    }
+
+    .totals-row.main {
+      border-top: 1px solid #e5e5e5;
+      margin-top: 8px;
+      padding-top: 12px;
+      font-size: 17px;
+      font-weight: 600;
+      color: #1a1a1a;
+    }
+
+    /* ── Footer de acciones ── */
+    .footer {
+      padding: 0.75rem 1.25rem;
+      border-top: 1px solid #e5e5e5;
+      text-align: right;
+      background: #fafafa;
+    }
+
+    .btn-clear {
+      font-size: 13px;
+      color: #666;
+    }
+  </style>
+</head>
+<body>
+
+  <h1>Calculadora de Factura — IGV 18%</h1>
+
+  <div class="card">
+
+    <!-- Formulario para agregar ítems -->
+    <div class="form-row">
+      <input type="text"   placeholder="Descripción del producto"
+             data-bind="value: descripcion, valueUpdate: 'input'" />
+      <input type="number" placeholder="Precio unit." min="0" step="0.01"
+             data-bind="value: precioUnitario, valueUpdate: 'input'" />
+      <input type="number" placeholder="Cantidad"     min="1" step="1"
+             data-bind="value: cantidad, valueUpdate: 'input'" />
+      <button class="btn-add" data-bind="click: agregarItem">+ Agregar</button>
+    </div>
+
+    <!-- Tabla de ítems -->
+    <!-- ko if: items().length === 0 -->
+    <div class="empty-msg">Agrega productos para calcular la factura.</div>
+    <!-- /ko -->
+
+    <!-- ko if: items().length > 0 -->
+    <table>
+      <thead>
+        <tr>
+          <th>Descripción</th>
+          <th>Cant.</th>
+          <th>P. Unit. (c/IGV)</th>
+          <th>Subtotal</th>
+          <th></th>
+        </tr>
+      </thead>
+      <tbody data-bind="foreach: items">
+        <tr>
+          <td data-bind="text: descripcion"></td>
+          <td data-bind="text: cantidad"></td>
+          <td data-bind="text: 'S/ ' + parseFloat(precioUnitario).toFixed(2)"></td>
+          <td data-bind="text: 'S/ ' + (parseFloat(precioUnitario) * parseInt(cantidad)).toFixed(2)"></td>
+          <td>
+            <button class="btn-del" data-bind="click: $parent.eliminarItem"
+                    title="Eliminar">&#x2715;</button>
+          </td>
+        </tr>
+      </tbody>
+    </table>
+
+    <!-- Totales -->
+    <div class="totals">
+      <div class="totals-row">
+        <span>Valor de venta (sin IGV)</span>
+        <span data-bind="text: 'S/ ' + valorVenta()"></span>
+      </div>
+      <div class="totals-row">
+        <span>IGV (18%)</span>
+        <span data-bind="text: 'S/ ' + igv()"></span>
+      </div>
+      <div class="totals-row main">
+        <span>Total a pagar</span>
+        <span data-bind="text: 'S/ ' + total()"></span>
+      </div>
+    </div>
+
+    <!-- Botón limpiar -->
+    <div class="footer">
+      <button class="btn-clear" data-bind="click: limpiar">&#x21BA; Limpiar todo</button>
+    </div>
+    <!-- /ko -->
+
+  </div><!-- /.card -->
+
+  <!-- Knockout desde CDN -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/knockout/3.5.1/knockout-min.js"></script>
+
+  <script>
+    var vm = {
+      // ── Campos del formulario ──
+      descripcion:    ko.observable(''),
+      precioUnitario: ko.observable(''),
+      cantidad:       ko.observable(1),
+
+      // ── Lista de ítems agregados ──
+      items: ko.observableArray([])
+    };
+
+    // Agrega un ítem validando los campos
+    vm.agregarItem = function () {
+      var desc   = vm.descripcion().trim();
+      var precio = parseFloat(vm.precioUnitario());
+      var cant   = parseInt(vm.cantidad());
+
+      if (!desc || isNaN(precio) || precio <= 0 || isNaN(cant) || cant <= 0) {
+        alert('Completa correctamente todos los campos antes de agregar.');
+        return;
+      }
+
+      vm.items.push({
+        descripcion:    desc,
+        precioUnitario: precio,
+        cantidad:       cant
+      });
+
+      // Limpia el formulario
+      vm.descripcion('');
+      vm.precioUnitario('');
+      vm.cantidad(1);
+    };
+
+    // Elimina un ítem de la lista
+    vm.eliminarItem = function (item) {
+      vm.items.remove(item);
+    };
+
+    // Limpia toda la factura
+    vm.limpiar = function () {
+      vm.items([]);
+    };
+
+    // ── Cálculos reactivos ──
+
+    // Suma bruta (precios ya incluyen IGV)
+    vm.subtotalBruto = ko.computed(function () {
+      return vm.items().reduce(function (acc, item) {
+        return acc + parseFloat(item.precioUnitario) * parseInt(item.cantidad);
+      }, 0);
+    });
+
+    // Base imponible: total ÷ 1.18
+    vm.valorVenta = ko.computed(function () {
+      return (vm.subtotalBruto() / 1.18).toFixed(2);
+    });
+
+    // IGV = total − base imponible
+    vm.igv = ko.computed(function () {
+      return (vm.subtotalBruto() - parseFloat(vm.valorVenta())).toFixed(2);
+    });
+
+    // Total a pagar
+    vm.total = ko.computed(function () {
+      return vm.subtotalBruto().toFixed(2);
+    });
+
+    // Activa los bindings
+    ko.applyBindings(vm);
+  </script>
+
+</body>
+</html>
